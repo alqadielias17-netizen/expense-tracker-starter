@@ -1,0 +1,212 @@
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+#totalExpenses {
+  color: #ffc107 !important;
+}
+
+.category-chart {
+  display: flex;
+  min-height: 300px;
+  align-items: end;
+  justify-content: space-around;
+  gap: 1rem;
+  padding: 1.5rem 1rem 0;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.chart-column {
+  display: flex;
+  flex: 1;
+  min-width: 60px;
+  height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 0.5rem;
+}
+
+.chart-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chart-bar {
+  width: min(70px, 100%);
+  min-height: 4px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(to top, #0d6efd, #0dcaf0);
+  transition: height 0.3s ease;
+}
+
+.chart-label {
+  min-height: 40px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sortable-column {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-column:hover {
+  background-color: #343a40;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  cursor: pointer;
+}
+
+body.dark-mode {
+  background-color: #212529 !important;
+  color: #f8f9fa;
+}
+
+body.dark-mode .card,
+body.dark-mode .modal-content {
+  background-color: #343a40 !important;
+  color: #f8f9fa !important;
+  border-color: #495057 !important;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #6c757d !important;
+}
+
+body.dark-mode .form-control::placeholder {
+  color: #adb5bd !important;
+  opacity: 1;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+}
+
+body.dark-mode input[type="date"] {
+  background-color: #000 !important;
+  color: #fff !important;
+  color-scheme: dark;
+}
+
+body.dark-mode #openDatePickerButton {
+  background-color: #000;
+  color: #fff;
+  border-color: #6c757d;
+}
+
+body.dark-mode #openDatePickerButton:hover {
+  background-color: #212529;
+  color: #fff;
+}
+
+body.dark-mode .text-muted,
+body.dark-mode .form-label,
+body.dark-mode .card-subtitle {
+  color: #ced4da !important;
+}
+
+body.dark-mode .table {
+  --bs-table-bg: #343a40;
+  --bs-table-color: #f8f9fa;
+  --bs-table-hover-bg: #495057;
+  --bs-table-hover-color: #fff;
+}
+
+body.dark-mode .table-light {
+  --bs-table-bg: #495057;
+  --bs-table-color: #fff;
+}
+
+body.dark-mode .category-chart {
+  border-bottom-color: #6c757d;
+}
+
+@media (max-width: 767.98px) {
+  .custom-responsive-table thead {
+    display: none;
+  }
+
+  .custom-responsive-table,
+  .custom-responsive-table tbody,
+  .custom-responsive-table tr,
+  .custom-responsive-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .custom-responsive-table tbody tr {
+    margin-bottom: 1rem;
+    padding: 12px;
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgb(0 0 0 / 3%);
+  }
+
+  .custom-responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e9ecef;
+    text-align: right;
+  }
+
+  .custom-responsive-table td:last-child {
+    padding-top: 12px;
+    border-bottom: none;
+  }
+
+  .custom-responsive-table td::before {
+    content: attr(data-label);
+    color: #6c757d;
+    font-weight: 600;
+    text-align: left;
+    margin-right: 15px;
+  }
+
+  body.dark-mode .custom-responsive-table tbody tr {
+    background-color: #343a40;
+    border-color: #495057;
+  }
+
+  body.dark-mode .custom-responsive-table td {
+    border-bottom-color: #495057;
+  }
+
+  body.dark-mode .custom-responsive-table td::before {
+    color: #ced4da;
+  }
+}
+
+@media (max-width: 576px) {
+  .category-chart {
+    gap: 0.5rem;
+    padding-inline: 0.25rem;
+  }
+
+  .chart-column {
+    min-width: 45px;
+  }
+
+  .chart-label,
+  .chart-value {
+    font-size: 0.72rem;
+  }
+}
