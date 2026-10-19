@@ -8,10 +8,11 @@ const editExpenseForm = document.getElementById("editExpenseForm");
 const categoryFilter = document.getElementById("categoryFilter");
 const confirmDeleteButton = document.getElementById("confirmDeleteButton");
 const monthFilter = document.getElementById("monthFilter");
-let sortColumn = "";
-let sortDirection = "asc";
 const exportCsvButton = document.getElementById("exportCsvButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
+let sortColumn = "";
+let sortDirection = "asc";
+
 
 function getFilteredExpenses() {
     const selectedCategory = categoryFilter.value;
@@ -21,7 +22,7 @@ function getFilteredExpenses() {
         const matchesCategory =
             selectedCategory === "All" ||
             expense.category === selectedCategory;
-
+        //month
         const expenseMonth = String(expense.date).slice(5, 7);
 
         const matchesMonth =
@@ -31,11 +32,36 @@ function getFilteredExpenses() {
         return matchesCategory && matchesMonth;
     });
 }
-
+// value to month or category
 function escapeCsvValue(value) {
     return `"${String(value).replace(/"/g, '""')}"`;
 }
+function sortExpenses(expenses) {
+    if (!sortColumn) {
+        return expenses;
+    }
 
+    return [...expenses].sort((firstExpense, secondExpense) => {
+        let firstValue = firstExpense[sortColumn];
+        let secondValue = secondExpense[sortColumn];
+
+        if (sortColumn === "amount") {
+            firstValue = Number(firstValue);
+            secondValue = Number(secondValue);
+
+            return sortDirection === "asc"
+                ? firstValue - secondValue
+                : secondValue - firstValue;
+        }
+
+        firstValue = String(firstValue).toLowerCase();
+        secondValue = String(secondValue).toLowerCase();
+
+        return sortDirection === "asc"
+            ? firstValue.localeCompare(secondValue)
+            : secondValue.localeCompare(firstValue);
+    });
+}
 function exportExpensesToCsv() {
     const filteredExpenses = getFilteredExpenses();
     const sortedExpenses = sortExpenses(filteredExpenses);
@@ -116,7 +142,7 @@ function showAlert(type, message, containerId) {
 
     setTimeout(() => {
         container.innerHTML = "";
-    }, 3000);
+    }, 6000);
 }
 
 function updateSummaryCards(expenses) {
@@ -129,13 +155,9 @@ function updateSummaryCards(expenses) {
             ? Math.max(...expenses.map((expense) => Number(expense.amount)))
             : 0;
 
-    document.getElementById("totalExpenses").textContent =
-        totalExpenses.toFixed(2);
-
+    document.getElementById("totalExpenses").textContent = totalExpenses.toFixed(2);
     document.getElementById("expenseCount").textContent = expenses.length;
-
-    document.getElementById("highestExpense").textContent =
-        highestExpense.toFixed(2);
+    document.getElementById("highestExpense").textContent = highestExpense.toFixed(2);
 }
 
 async function getExpenses() {
@@ -149,16 +171,10 @@ async function getExpenses() {
         const response = await fetch(API_URL);
 
         if (!response.ok) {
-            const message = await getResponseError(
-                response,
-                "Failed to load expenses."
-            );
-
+            const message = await getResponseError(response, "Failed to load expenses.");
             throw new Error(message);
         }
-
         allExpenses = await response.json();
-
         updateSummaryCards(allExpenses);
         applyFilter();
         renderCategoryChart(allExpenses);
@@ -207,17 +223,9 @@ function displayExpenses(expenses) {
         const actionsCell = document.createElement("td");
         actionsCell.className = "text-md-end";
 
-        const editButton = createActionButton(
-            "Edit",
-            "btn-warning me-1",
-            () => editExpense(expense.id)
-        );
+        const editButton = createActionButton("Edit", "btn-warning me-1", () => editExpense(expense.id));
 
-        const deleteButton = createActionButton(
-            "Delete",
-            "btn-danger",
-            () => deleteExpense(expense.id)
-        );
+        const deleteButton = createActionButton("Delete", "btn-danger", () => deleteExpense(expense.id));
 
         actionsCell.append(editButton, deleteButton);
 
@@ -236,37 +244,9 @@ function displayExpenses(expenses) {
         return sum + Number(expense.amount);
     }, 0);
 
-    document.getElementById("filteredCount").textContent =
-        `${expenses.length} Expenses`;
+    document.getElementById("filteredCount").textContent = `${expenses.length} Expenses`;
 
-    document.getElementById("filteredTotal").textContent =
-        filteredTotal.toFixed(2);
-}
-function sortExpenses(expenses) {
-    if (!sortColumn) {
-        return expenses;
-    }
-
-    return [...expenses].sort((firstExpense, secondExpense) => {
-        let firstValue = firstExpense[sortColumn];
-        let secondValue = secondExpense[sortColumn];
-
-        if (sortColumn === "amount") {
-            firstValue = Number(firstValue);
-            secondValue = Number(secondValue);
-
-            return sortDirection === "asc"
-                ? firstValue - secondValue
-                : secondValue - firstValue;
-        }
-
-        firstValue = String(firstValue).toLowerCase();
-        secondValue = String(secondValue).toLowerCase();
-
-        return sortDirection === "asc"
-            ? firstValue.localeCompare(secondValue)
-            : secondValue.localeCompare(firstValue);
-    });
+    document.getElementById("filteredTotal").textContent = filteredTotal.toFixed(2);
 }
 
 function applyFilter() {
@@ -297,9 +277,7 @@ function renderCategoryChart(expenses) {
     chartContainer.innerHTML = "";
 
     if (categoryEntries.length === 0) {
-        chartContainer.innerHTML =
-            '<p class="text-muted mb-0">No expenses available to display.</p>';
-
+        chartContainer.innerHTML = '<p class="text-muted mb-0">No expenses available to display.</p>';
         return;
     }
 
@@ -343,7 +321,7 @@ function clearEditFormErrors() {
     document.getElementById("editCategoryError").textContent = "";
     document.getElementById("editDateError").textContent = "";
 }
-
+// prefix for edit 
 function validateExpense(title, amount, category, date, prefix = "") {
     let isValid = true;
 
@@ -581,10 +559,11 @@ editExpenseForm.addEventListener("submit", async (event) => {
 document.querySelectorAll(".sortable-column").forEach((column) => {
     column.addEventListener("click", () => {
         const selectedColumn = column.dataset.sort;
-
+//the same column is clicked
         if (sortColumn === selectedColumn) {
             sortDirection = sortDirection === "asc" ? "desc" : "asc";
         } else {
+            // new column is clicked, set to ascending order
             sortColumn = selectedColumn;
             sortDirection = "asc";
         }

@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -5,7 +6,7 @@ require("dotenv").config();
 const { Pool } = require("pg");
 
 const app = express();
-
+//New cors ,express.json() 
 app.use(cors());
 app.use(express.json());
 
