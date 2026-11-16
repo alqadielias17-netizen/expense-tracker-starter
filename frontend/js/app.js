@@ -1,5 +1,33 @@
-const API_URL = "http://localhost:3000/api/expenses";
-const INCOME_API_URL = "http://localhost:3000/api/incomes";
+
+const STORAGE_KEYS = {
+    expenses: "expenseTracker_expenses",
+    incomes: "expenseTracker_incomes"
+};
+
+function loadFromStorage(key) {
+    try {
+        return JSON.parse(localStorage.getItem(key)) || [];
+    } catch {
+        return [];
+    }
+}
+
+function saveToStorage() {
+    localStorage.setItem(
+        STORAGE_KEYS.expenses,
+        JSON.stringify(allExpenses)
+    );
+
+    localStorage.setItem(
+        STORAGE_KEYS.incomes,
+        JSON.stringify(allIncomes)
+    );
+}
+
+function generateId() {
+    return Date.now().toString() + Math.random().toString(36).slice(2);
+}
+
 
 let allExpenses = [];
 let allIncomes = [];
@@ -345,45 +373,17 @@ function updateSummaryCards(expenses, incomes = []) {
         (totalIncome - totalExpenses).toFixed(2);
 }
 
-async function getExpenses() {
-    const spinner = document.getElementById("spinner");
 
-    if (spinner) {
-        spinner.classList.remove("d-none");
-    }
+function getExpenses() {
+    allExpenses = loadFromStorage(STORAGE_KEYS.expenses);
+    allIncomes = loadFromStorage(STORAGE_KEYS.incomes);
 
-    try {
-        const response = await fetch(API_URL, { credentials: "include" });
-
-        if (!response.ok) {
-            const message = await getResponseError(response, "Failed to load expenses.");
-            throw new Error(message);
-        }
-        allExpenses = await response.json();
-
-        const incomeResponse = await fetch(INCOME_API_URL, { credentials: "include" });
-
-        if (!incomeResponse.ok) {
-            const message = await getResponseError(
-                incomeResponse,
-                "Failed to load income."
-            );
-            throw new Error(message);
-        }
-
-        allIncomes = await incomeResponse.json();
-        renderMonthlyReport();
-        updateSummaryCards(allExpenses, allIncomes);
-        applyFilter();
-        renderCategoryChart(allExpenses);
-    } catch (error) {
-        showAlert("danger", getErrorMessage(error), "tableAlertContainer");
-    } finally {
-        if (spinner) {
-            spinner.classList.add("d-none");
-        }
-    }
+    renderMonthlyReport();
+    updateSummaryCards(allExpenses, allIncomes);
+    applyFilter();
+    renderCategoryChart(allExpenses);
 }
+
 
 function createActionButton(label, buttonClass, onClick) {
     const button = document.createElement("button");
@@ -550,7 +550,8 @@ function validateExpense(title, amount, category, date, prefix = "") {
     return isValid;
 }
 
-expenseForm.addEventListener("submit", async (event) => {
+
+expenseForm.addEventListener("submit", (event) => {
     event.preventDefault();
     clearAddFormErrors();
 
@@ -564,45 +565,34 @@ expenseForm.addEventListener("submit", async (event) => {
     }
 
     const isIncome = currentTransactionType === "income";
-    const selectedApiUrl = isIncome ? INCOME_API_URL : API_URL;
-    const recordName = isIncome ? "income" : "expense";
 
-    try {
-        const response = await fetch(selectedApiUrl, {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                title,
-                amount: Number(amount),
-                category,
-                date,
-            }),
-        });
+    const newRecord = {
+        id: generateId(),
+        title,
+        amount: Number(amount),
+        category,
+        date
+    };
 
-        if (!response.ok) {
-            const message = await getResponseError(
-                response,
-                `Failed to add ${recordName}.`
-            );
-            throw new Error(`${message} (HTTP ${response.status})`);
-        }
-
-        expenseForm.reset();
-
-        showAlert(
-            "success",
-            `${isIncome ? "Income" : "Expense"} added successfully.`,
-            "formAlertContainer"
-        );
-
-        await getExpenses();
-    } catch (error) {
-        showAlert("danger", getErrorMessage(error), "formAlertContainer");
+    if (isIncome) {
+        allIncomes.push(newRecord);
+    } else {
+        allExpenses.push(newRecord);
     }
+
+    saveToStorage();
+
+    expenseForm.reset();
+
+    showAlert(
+        "success",
+        `${isIncome ? "Income" : "Expense"} added successfully.`,
+        "formAlertContainer"
+    );
+
+    getExpenses();
 });
+
 
 function editExpense(id) {
     const expense = allExpenses.find(
@@ -675,50 +665,45 @@ themeToggleButton.addEventListener("click", () => {
 
 loadSavedTheme();
 
-confirmDeleteButton.addEventListener("click", async () => {
+
+confirmDeleteButton.addEventListener("click", () => {
     if (expenseToDelete === null) {
         return;
     }
 
     const isIncome = deleteRecordType === "income";
-    const selectedApiUrl = isIncome ? INCOME_API_URL : API_URL;
-    const recordName = isIncome ? "income" : "expense";
+
+    if (isIncome) {
+        allIncomes = allIncomes.filter(
+            item => String(item.id) !== String(expenseToDelete)
+        );
+    } else {
+        allExpenses = allExpenses.filter(
+            item => String(item.id) !== String(expenseToDelete)
+        );
+    }
+
+    saveToStorage();
+
     const modal = bootstrap.Modal.getOrCreateInstance(
         document.getElementById("deleteExpenseModal")
     );
 
-    try {
-        const response = await fetch(`${selectedApiUrl}/${expenseToDelete}`, {
-            method: "DELETE",
-            credentials: "include",
-        });
+    modal.hide();
 
-        if (!response.ok) {
-            const message = await getResponseError(
-                response,
-                `Failed to delete ${recordName}.`
-            );
-            throw new Error(message);
-        }
+    expenseToDelete = null;
+    deleteRecordType = "expense";
 
-        modal.hide();
-        expenseToDelete = null;
-        deleteRecordType = "expense";
+    showAlert(
+        "success",
+        `${isIncome ? "Income" : "Expense"} deleted successfully.`,
+        "tableAlertContainer"
+    );
 
-        showAlert(
-            "success",
-            `${isIncome ? "Income" : "Expense"} deleted successfully.`,
-            "tableAlertContainer"
-        );
-
-        await getExpenses();
-    } catch (error) {
-        modal.hide();
-        showAlert("danger", getErrorMessage(error), "tableAlertContainer");
-    }
+    getExpenses();
 });
 
-editExpenseForm.addEventListener("submit", async (event) => {
+editExpenseForm.addEventListener("submit", (event) => {
     event.preventDefault();
     clearEditFormErrors();
 
@@ -732,49 +717,40 @@ editExpenseForm.addEventListener("submit", async (event) => {
         return;
     }
 
-    try {
-        const editApiUrl =
-    currentTableType === "income" ? INCOME_API_URL : API_URL;
+    const records = currentTableType === "income"
+        ? allIncomes
+        : allExpenses;
 
-const response = await fetch(`${editApiUrl}/${id}`, {
-            method: "PUT",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                title,
-                amount: Number(amount),
-                category,
-                date,
-            }),
-        });
+    const record = records.find(
+        item => String(item.id) === String(id)
+    );
 
-        if (!response.ok) {
-            const message = await getResponseError(
-                response,
-                "Failed to update expense."
-            );
-
-            throw new Error(message);
-        }
-
-        const modalElement = document.getElementById("editExpenseModal");
-        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-
-        modal.hide();
-
-        showAlert(
-            "success",
-            "Expense updated successfully.",
-            "tableAlertContainer"
-        );
-
-        await getExpenses();
-    } catch (error) {
-        showAlert("danger", getErrorMessage(error), "tableAlertContainer");
+    if (!record) {
+        return;
     }
+
+    record.title = title;
+    record.amount = Number(amount);
+    record.category = category;
+    record.date = date;
+
+    saveToStorage();
+
+    const modal = bootstrap.Modal.getOrCreateInstance(
+        document.getElementById("editExpenseModal")
+    );
+
+    modal.hide();
+
+    showAlert(
+        "success",
+        `${currentTableType === "income" ? "Income" : "Expense"} updated successfully.`,
+        "tableAlertContainer"
+    );
+
+    getExpenses();
 });
+
 document.querySelectorAll(".sortable-column").forEach((column) => {
     column.addEventListener("click", () => {
         const selectedColumn = column.dataset.sort;
@@ -836,8 +812,6 @@ document.getElementById("categoryChartTab").className = "btn btn-outline-primary
     renderMonthlyReport();
 });
 
-let authMode = "login";
-
 const authForm = document.getElementById("authForm");
 const authSection = document.getElementById("authSection");
 const appContent = document.getElementById("appContent");
@@ -846,121 +820,4 @@ const logoutButton = document.getElementById("logoutButton");
 const confirmPasswordGroup = document.getElementById("confirmPasswordGroup");
 const confirmPasswordInput = document.getElementById("authConfirmPassword");
 
-function showSignedInUser(email) {
-    signedInUser.textContent = email;
-    signedInUser.classList.remove("d-none");
-    logoutButton.classList.remove("d-none");
-}
-
-function showSignInForm() {
-    signedInUser.classList.add("d-none");
-    logoutButton.classList.add("d-none");
-    appContent.classList.add("d-none");
-    authSection.classList.remove("d-none");
-}
-
-document.getElementById("loginModeButton").addEventListener("click", () => {
-    authMode = "login";
-    document.getElementById("authTitle").textContent = "Sign in";
-    document.getElementById("authSubmitButton").textContent = "Sign in";
-
-    document.getElementById("loginModeButton").className = "btn btn-primary";
-    document.getElementById("registerModeButton").className =
-        "btn btn-outline-primary";
-
-    confirmPasswordGroup.classList.add("d-none");
-    confirmPasswordInput.required = false;
-    confirmPasswordInput.value = "";
-});
-
-document.getElementById("registerModeButton").addEventListener("click", () => {
-    authMode = "register";
-    document.getElementById("authTitle").textContent = "Create account";
-    document.getElementById("authSubmitButton").textContent = "Create account";
-
-    document.getElementById("registerModeButton").className = "btn btn-primary";
-    document.getElementById("loginModeButton").className =
-        "btn btn-outline-primary";
-
-    confirmPasswordGroup.classList.remove("d-none");
-    confirmPasswordInput.required = true;
-});
-
-authForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (
-    authMode === "register" &&
-    document.getElementById("authPassword").value !== confirmPasswordInput.value
-) {
-    const message = document.getElementById("authMessage");
-    message.textContent = "Passwords do not match.";
-    message.className = "alert alert-danger";
-    return;
-}
-
-    const endpoint = authMode === "register" ? "register" : "login";
-
-    try {
-        const response = await fetch(
-            `http://localhost:3000/api/auth/${endpoint}`,
-            {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: document.getElementById("authEmail").value.trim(),
-                    password: document.getElementById("authPassword").value
-                })
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || "Sign-in failed.");
-        }
-
-        authSection.classList.add("d-none");
-        appContent.classList.remove("d-none");
-        showSignedInUser(data.user.email);
-        await getExpenses();
-    } catch (error) {
-        const message = document.getElementById("authMessage");
-        message.textContent = error.message;
-        message.className = "alert alert-danger";
-    }
-});
-
-logoutButton.addEventListener("click", async () => {
-    try {
-        await fetch("http://localhost:3000/api/auth/logout", {
-            method: "POST",
-            credentials: "include"
-        });
-
-        showSignInForm();
-    } catch {
-        alert("Could not sign out. Please try again.");
-    }
-});
-
-async function checkAuthentication() {
-    try {
-        const response = await fetch("http://localhost:3000/api/auth/me", {
-            credentials: "include"
-        });
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-        authSection.classList.add("d-none");
-        appContent.classList.remove("d-none");
-        showSignedInUser(data.user.email);
-        await getExpenses();
-    } catch (error) {
-        console.error("Could not check sign-in session:", error);
-    }
-}
-
-checkAuthentication();
-
+getExpenses();

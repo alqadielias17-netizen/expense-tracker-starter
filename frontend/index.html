@@ -22,56 +22,11 @@
       <button type="button" id="themeToggleButton" class="btn btn-outline-light btn-sm" aria-label="Toggle dark mode">
         <i class="bi bi-moon-stars-fill"></i> Dark Mode
       </button>
-      <span id="signedInUser" class="text-white small me-3"></span>
-      <button type="button" id="logoutButton" class="btn btn-outline-light btn-sm d-none">
-        Sign out
-      </button>
 
     </div>
   </nav>
-  <section id="authSection" class="container my-5" style="max-width: 460px;">
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-4">
-        <h2 id="authTitle" class="h4 mb-3">Sign in</h2>
 
-        <div class="btn-group w-100 mb-3">
-          <button type="button" class="btn btn-primary" id="loginModeButton">
-            Sign in
-          </button>
-          <button type="button" class="btn btn-outline-primary" id="registerModeButton">
-            Create account
-          </button>
-        </div>
-
-        <div id="authMessage"></div>
-
-        <form id="authForm">
-          <div class="mb-3">
-            <label for="authEmail" class="form-label">Email</label>
-            <input type="email" id="authEmail" class="form-control" required>
-          </div>
-
-          <div class="mb-3">
-            <label for="authPassword" class="form-label">Password</label>
-            <input type="password" id="authPassword" class="form-control" minlength="8" required>
-            <div class="form-text">At least 8 characters.</div>
-          </div>
-          <div id="confirmPasswordGroup" class="mb-3 d-none">
-            <label for="authConfirmPassword" class="form-label">
-              Confirm password
-            </label>
-            <input type="password" id="authConfirmPassword" class="form-control" minlength="8"
-              autocomplete="new-password">
-          </div>
-
-          <button type="submit" class="btn btn-primary w-100" id="authSubmitButton">
-            Sign in
-          </button>
-        </form>
-      </div>
-    </div>
-  </section>
-  <main id="appContent" class="container my-4 my-md-5 d-none">
+  <main id="appContent" class="container my-4 my-md-5">
 
     <h1 class="text-center mb-4 fw-bold text-primary">Personal Finance Tracker</h1>
     <section class="row g-3 mb-4">
