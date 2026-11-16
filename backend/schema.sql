@@ -11,6 +11,13 @@ CREATE TABLE expenses (
   category VARCHAR(20)   NOT NULL CHECK (category IN ('Food', 'Transport', 'Bills', 'Entertainment', 'Other')),
   date     DATE          NOT NULL
 );
+CREATE TABLE incomes (
+  id       SERIAL PRIMARY KEY,
+  title    VARCHAR(100) NOT NULL CHECK (btrim(title) <> ''),
+  amount   NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+  category VARCHAR(20) NOT NULL CHECK (category IN ('Salary', 'Business', 'Investment', 'Other')),
+  date     DATE         NOT NULL
+);
 
 INSERT INTO expenses (title, amount, category, date) VALUES
   ('Lunch',            4.50,  'Food',          '2026-01-15'),

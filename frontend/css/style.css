@@ -210,3 +210,23 @@ body.dark-mode .category-chart {
     font-size: 0.72rem;
   }
 }
+.monthly-report {
+  display: block;
+  width: 100%;
+}
+
+.monthly-report .d-flex.align-items-center {
+  display: grid !important;
+  grid-template-columns: 70px minmax(40px, 1fr) max-content;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.monthly-report .progress {
+  width: 100%;
+  min-width: 0;
+}
+
+.monthly-report small {
+  white-space: nowrap;
+}

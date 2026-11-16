@@ -1,7 +1,10 @@
 const API_URL = "http://localhost:3000/api/expenses";
+const INCOME_API_URL = "http://localhost:3000/api/incomes";
 
 let allExpenses = [];
+let allIncomes = [];
 let expenseToDelete = null;
+let deleteRecordType = "expense";
 
 const expenseForm = document.getElementById("expenseForm");
 const editExpenseForm = document.getElementById("editExpenseForm");
@@ -12,6 +15,54 @@ const exportCsvButton = document.getElementById("exportCsvButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
 let sortColumn = "";
 let sortDirection = "asc";
+let currentTransactionType = "expense";
+const expensesTab = document.getElementById("expensesTab");
+const incomesTab = document.getElementById("incomesTab");
+let currentTableType = "expense";
+
+const showExpenseFormButton = document.getElementById("showExpenseForm");
+const showIncomeFormButton = document.getElementById("showIncomeForm");
+
+function switchTransactionType(type) {
+    currentTransactionType = type;
+
+    const isIncome = type === "income";
+    document.getElementById("transactionFormTitle").textContent =
+        isIncome ? "Add Income" : "Add Expense";
+
+    document.getElementById("title").placeholder =
+        isIncome ? "Enter income title" : "Enter expense title";
+
+    const categorySelect = document.getElementById("category");
+    const categories = isIncome
+        ? ["Salary", "Business", "Investment", "Other"]
+        : ["Food", "Transport", "Bills", "Entertainment", "Other"];
+
+    categorySelect.replaceChildren(
+        new Option("Select a category", ""),
+        ...categories.map((category) => new Option(category, category))
+    );
+
+    showIncomeFormButton.className = isIncome
+        ? "btn btn-success"
+        : "btn btn-outline-success";
+
+    showExpenseFormButton.className = isIncome
+        ? "btn btn-outline-primary"
+        : "btn btn-primary";
+
+    expenseForm.querySelector('[type="submit"]').innerHTML = isIncome
+        ? '<i class="bi bi-plus-lg me-1"></i>Add Income'
+        : '<i class="bi bi-plus-lg me-1"></i>Add Expense';
+}
+
+showExpenseFormButton.addEventListener("click", () => {
+    switchTransactionType("expense");
+});
+
+showIncomeFormButton.addEventListener("click", () => {
+    switchTransactionType("income");
+});
 
 
 function getFilteredExpenses() {
@@ -32,6 +83,115 @@ function getFilteredExpenses() {
         return matchesCategory && matchesMonth;
     });
 }
+function getFilteredIncomes() {
+    const selectedCategory = categoryFilter.value;
+    const selectedMonth = monthFilter.value;
+
+    return allIncomes.filter((income) => {
+        const matchesCategory =
+            selectedCategory === "All" ||
+            income.category === selectedCategory;
+
+        const incomeMonth = String(income.date).slice(5, 7);
+        const matchesMonth =
+            selectedMonth === "" ||
+            incomeMonth === selectedMonth;
+
+        return matchesCategory && matchesMonth;
+    });
+}
+
+function displayIncomes(incomes) {
+    const tableBody = document.getElementById("expensesTableBody");
+    tableBody.innerHTML = "";
+
+    incomes.forEach((income) => {
+        const row = document.createElement("tr");
+
+        [income.title, Number(income.amount).toFixed(2), income.category, income.date]
+            .forEach((value) => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+        const actionsCell = document.createElement("td");
+        const editButton = createActionButton("Edit", "btn-warning me-1", () => {
+            document.getElementById("editId").value = income.id;
+            document.getElementById("editTitle").value = income.title;
+            document.getElementById("editAmount").value = income.amount;
+            document.getElementById("editCategory").value = income.category;
+            document.getElementById("editDate").value = income.date;
+
+            document.getElementById("editCategory").innerHTML = `
+        <option value="Salary">Salary</option>
+        <option value="Business">Business</option>
+        <option value="Investment">Investment</option>
+        <option value="Other">Other</option>
+    `;
+
+            document.getElementById("editCategory").value = income.category;
+
+            const modal = bootstrap.Modal.getOrCreateInstance(
+                document.getElementById("editExpenseModal")
+            );
+            modal.show();
+        });
+
+        actionsCell.appendChild(editButton);
+
+        const deleteButton = createActionButton(
+            "Delete",
+            "btn-danger",
+            () => openDeleteConfirmation(income.id, "income")
+        );
+
+        actionsCell.appendChild(deleteButton);
+        row.appendChild(actionsCell);
+        tableBody.appendChild(row);
+    });
+
+    const total = incomes.reduce(
+        (sum, income) => sum + Number(income.amount),
+        0
+    );
+
+    document.getElementById("filteredCount").textContent =
+        `${incomes.length} Incomes`;
+
+    document.getElementById("filteredTotal").textContent = total.toFixed(2);
+}
+function displaySelectedTable() {
+    const isIncome = currentTableType === "income";
+    const tableBody = document.getElementById("expensesTableBody");
+
+    if (isIncome) {
+        displayIncomes(getFilteredIncomes());
+    } else {
+        displayExpenses(sortExpenses(getFilteredExpenses()));
+    }
+
+    expensesTab.className = isIncome
+        ? "btn btn-outline-primary"
+        : "btn btn-primary";
+
+    incomesTab.className = isIncome
+        ? "btn btn-success"
+        : "btn btn-outline-success";
+
+    tableBody.closest("table").querySelector("thead").className =
+        isIncome ? "table-success" : "table-dark";
+}
+
+expensesTab.addEventListener("click", () => {
+    currentTableType = "expense";
+    displaySelectedTable();
+});
+
+incomesTab.addEventListener("click", () => {
+    currentTableType = "income";
+    displaySelectedTable();
+});
 // value to month or category
 function escapeCsvValue(value) {
     return `"${String(value).replace(/"/g, '""')}"`;
@@ -63,25 +223,34 @@ function sortExpenses(expenses) {
     });
 }
 function exportExpensesToCsv() {
-    const filteredExpenses = getFilteredExpenses();
-    const sortedExpenses = sortExpenses(filteredExpenses);
+    const rows = [
+        ...allExpenses.map((item) => ({
+            ...item,
+            type: "Expense",
+        })),
+        ...allIncomes.map((item) => ({
+            ...item,
+            type: "Income",
+        })),
+    ];
 
-    if (sortedExpenses.length === 0) {
+    if (rows.length === 0) {
         showAlert(
             "warning",
-            "There are no expenses to export.",
+            "There are no records to export.",
             "tableAlertContainer"
         );
         return;
     }
 
     const csvRows = [
-        ["Title", "Amount", "Category", "Date"],
-        ...sortedExpenses.map((expense) => [
-            expense.title,
-            Number(expense.amount).toFixed(2),
-            expense.category,
-            expense.date,
+        ["Type", "Title", "Amount", "Category", "Date"],
+        ...rows.map((item) => [
+            item.type,
+            item.title,
+            Number(item.amount).toFixed(2),
+            item.category,
+            item.date,
         ]),
     ];
 
@@ -97,7 +266,7 @@ function exportExpensesToCsv() {
     const downloadLink = document.createElement("a");
 
     downloadLink.href = downloadUrl;
-    downloadLink.download = "expenses.csv";
+    downloadLink.download = "personal-finance-report.csv";
 
     document.body.appendChild(downloadLink);
     downloadLink.click();
@@ -145,19 +314,35 @@ function showAlert(type, message, containerId) {
     }, 6000);
 }
 
-function updateSummaryCards(expenses) {
-    const totalExpenses = expenses.reduce((sum, expense) => {
-        return sum + Number(expense.amount);
-    }, 0);
+function updateSummaryCards(expenses, incomes = []) {
+    const totalExpenses = expenses.reduce(
+        (sum, expense) => sum + Number(expense.amount),
+        0
+    );
 
     const highestExpense =
         expenses.length > 0
             ? Math.max(...expenses.map((expense) => Number(expense.amount)))
             : 0;
 
-    document.getElementById("totalExpenses").textContent = totalExpenses.toFixed(2);
+    const totalIncome = incomes.reduce(
+        (sum, income) => sum + Number(income.amount),
+        0
+    );
+
+    document.getElementById("totalExpenses").textContent =
+        totalExpenses.toFixed(2);
+
     document.getElementById("expenseCount").textContent = expenses.length;
-    document.getElementById("highestExpense").textContent = highestExpense.toFixed(2);
+
+    document.getElementById("highestExpense").textContent =
+        highestExpense.toFixed(2);
+
+    document.getElementById("totalIncome").textContent =
+        totalIncome.toFixed(2);
+
+    document.getElementById("netBalance").textContent =
+        (totalIncome - totalExpenses).toFixed(2);
 }
 
 async function getExpenses() {
@@ -168,14 +353,27 @@ async function getExpenses() {
     }
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, { credentials: "include" });
 
         if (!response.ok) {
             const message = await getResponseError(response, "Failed to load expenses.");
             throw new Error(message);
         }
         allExpenses = await response.json();
-        updateSummaryCards(allExpenses);
+
+        const incomeResponse = await fetch(INCOME_API_URL, { credentials: "include" });
+
+        if (!incomeResponse.ok) {
+            const message = await getResponseError(
+                incomeResponse,
+                "Failed to load income."
+            );
+            throw new Error(message);
+        }
+
+        allIncomes = await incomeResponse.json();
+        renderMonthlyReport();
+        updateSummaryCards(allExpenses, allIncomes);
         applyFilter();
         renderCategoryChart(allExpenses);
     } catch (error) {
@@ -250,14 +448,11 @@ function displayExpenses(expenses) {
 }
 
 function applyFilter() {
-    const filteredExpenses = getFilteredExpenses();
-    const sortedExpenses = sortExpenses(filteredExpenses);
-
-    displayExpenses(sortedExpenses);
+    displaySelectedTable();
 }
 
-function renderCategoryChart(expenses) {
-    const chartContainer = document.getElementById("categoryChart");
+function renderCategoryChart(expenses, containerId = "categoryChart") {
+    const chartContainer = document.getElementById(containerId);
 
     if (!chartContainer) {
         return;
@@ -277,7 +472,7 @@ function renderCategoryChart(expenses) {
     chartContainer.innerHTML = "";
 
     if (categoryEntries.length === 0) {
-        chartContainer.innerHTML = '<p class="text-muted mb-0">No expenses available to display.</p>';
+        chartContainer.innerHTML = '<p class="text-muted mb-0">No records available to display.</p>';
         return;
     }
 
@@ -307,7 +502,9 @@ function renderCategoryChart(expenses) {
         chartContainer.appendChild(chartColumn);
     });
 }
-
+function renderMonthlyReport() {
+    renderCategoryChart(allIncomes, "monthlyReport");
+}
 function clearAddFormErrors() {
     document.getElementById("titleError").textContent = "";
     document.getElementById("amountError").textContent = "";
@@ -366,9 +563,14 @@ expenseForm.addEventListener("submit", async (event) => {
         return;
     }
 
+    const isIncome = currentTransactionType === "income";
+    const selectedApiUrl = isIncome ? INCOME_API_URL : API_URL;
+    const recordName = isIncome ? "income" : "expense";
+
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(selectedApiUrl, {
             method: "POST",
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
             },
@@ -383,17 +585,16 @@ expenseForm.addEventListener("submit", async (event) => {
         if (!response.ok) {
             const message = await getResponseError(
                 response,
-                "Failed to add expense."
+                `Failed to add ${recordName}.`
             );
-
-            throw new Error(message);
+            throw new Error(`${message} (HTTP ${response.status})`);
         }
 
         expenseForm.reset();
 
         showAlert(
             "success",
-            "Expense added successfully.",
+            `${isIncome ? "Income" : "Expense"} added successfully.`,
             "formAlertContainer"
         );
 
@@ -426,13 +627,22 @@ function editExpense(id) {
     modal.show();
 }
 
-function deleteExpense(id) {
+function openDeleteConfirmation(id, type) {
     expenseToDelete = id;
+    deleteRecordType = type;
+
+    document.getElementById("deleteConfirmationText").textContent =
+        type === "income"
+            ? "Are you sure you want to delete this income record?"
+            : "Are you sure you want to delete this expense?";
 
     const modalElement = document.getElementById("deleteExpenseModal");
     const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-
     modal.show();
+}
+
+function deleteExpense(id) {
+    openDeleteConfirmation(id, "expense");
 }
 function updateThemeButton() {
     const isDarkMode = document.body.classList.contains("dark-mode");
@@ -470,29 +680,34 @@ confirmDeleteButton.addEventListener("click", async () => {
         return;
     }
 
-    const modalElement = document.getElementById("deleteExpenseModal");
-    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const isIncome = deleteRecordType === "income";
+    const selectedApiUrl = isIncome ? INCOME_API_URL : API_URL;
+    const recordName = isIncome ? "income" : "expense";
+    const modal = bootstrap.Modal.getOrCreateInstance(
+        document.getElementById("deleteExpenseModal")
+    );
 
     try {
-        const response = await fetch(`${API_URL}/${expenseToDelete}`, {
+        const response = await fetch(`${selectedApiUrl}/${expenseToDelete}`, {
             method: "DELETE",
+            credentials: "include",
         });
 
         if (!response.ok) {
             const message = await getResponseError(
                 response,
-                "Failed to delete expense."
+                `Failed to delete ${recordName}.`
             );
-
             throw new Error(message);
         }
 
         modal.hide();
         expenseToDelete = null;
+        deleteRecordType = "expense";
 
         showAlert(
             "success",
-            "Expense deleted successfully.",
+            `${isIncome ? "Income" : "Expense"} deleted successfully.`,
             "tableAlertContainer"
         );
 
@@ -518,8 +733,12 @@ editExpenseForm.addEventListener("submit", async (event) => {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const editApiUrl =
+    currentTableType === "income" ? INCOME_API_URL : API_URL;
+
+const response = await fetch(`${editApiUrl}/${id}`, {
             method: "PUT",
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
             },
@@ -559,7 +778,7 @@ editExpenseForm.addEventListener("submit", async (event) => {
 document.querySelectorAll(".sortable-column").forEach((column) => {
     column.addEventListener("click", () => {
         const selectedColumn = column.dataset.sort;
-//the same column is clicked
+        //the same column is clicked
         if (sortColumn === selectedColumn) {
             sortDirection = sortDirection === "asc" ? "desc" : "asc";
         } else {
@@ -577,6 +796,19 @@ monthFilter.addEventListener("change", applyFilter);
 exportCsvButton.addEventListener("click", exportExpensesToCsv);
 
 const dateInput = document.getElementById("date");
+function getLocalToday() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+const today = getLocalToday();
+
+dateInput.max = today;
+document.getElementById("editDate").max = today;
 const openDatePickerButton = document.getElementById("openDatePickerButton");
 
 openDatePickerButton.addEventListener("click", () => {
@@ -587,4 +819,148 @@ openDatePickerButton.addEventListener("click", () => {
         dateInput.click();
     }
 });
-getExpenses();
+document.getElementById("categoryChartTab").addEventListener("click", () => {
+    document.getElementById("categoryChart").classList.remove("d-none");
+    document.getElementById("monthlyReport").classList.add("d-none");
+    document.getElementById("chartTitle").textContent = "Expenses by Category";
+    document.getElementById("categoryChartTab").className = "btn btn-primary";
+document.getElementById("monthlyChartTab").className = "btn btn-outline-primary";
+});
+
+document.getElementById("monthlyChartTab").addEventListener("click", () => {
+    document.getElementById("categoryChart").classList.add("d-none");
+    document.getElementById("monthlyReport").classList.remove("d-none");
+    document.getElementById("chartTitle").textContent = "Income by Category";
+    document.getElementById("monthlyChartTab").className = "btn btn-primary";
+document.getElementById("categoryChartTab").className = "btn btn-outline-primary";
+    renderMonthlyReport();
+});
+
+let authMode = "login";
+
+const authForm = document.getElementById("authForm");
+const authSection = document.getElementById("authSection");
+const appContent = document.getElementById("appContent");
+const signedInUser = document.getElementById("signedInUser");
+const logoutButton = document.getElementById("logoutButton");
+const confirmPasswordGroup = document.getElementById("confirmPasswordGroup");
+const confirmPasswordInput = document.getElementById("authConfirmPassword");
+
+function showSignedInUser(email) {
+    signedInUser.textContent = email;
+    signedInUser.classList.remove("d-none");
+    logoutButton.classList.remove("d-none");
+}
+
+function showSignInForm() {
+    signedInUser.classList.add("d-none");
+    logoutButton.classList.add("d-none");
+    appContent.classList.add("d-none");
+    authSection.classList.remove("d-none");
+}
+
+document.getElementById("loginModeButton").addEventListener("click", () => {
+    authMode = "login";
+    document.getElementById("authTitle").textContent = "Sign in";
+    document.getElementById("authSubmitButton").textContent = "Sign in";
+
+    document.getElementById("loginModeButton").className = "btn btn-primary";
+    document.getElementById("registerModeButton").className =
+        "btn btn-outline-primary";
+
+    confirmPasswordGroup.classList.add("d-none");
+    confirmPasswordInput.required = false;
+    confirmPasswordInput.value = "";
+});
+
+document.getElementById("registerModeButton").addEventListener("click", () => {
+    authMode = "register";
+    document.getElementById("authTitle").textContent = "Create account";
+    document.getElementById("authSubmitButton").textContent = "Create account";
+
+    document.getElementById("registerModeButton").className = "btn btn-primary";
+    document.getElementById("loginModeButton").className =
+        "btn btn-outline-primary";
+
+    confirmPasswordGroup.classList.remove("d-none");
+    confirmPasswordInput.required = true;
+});
+
+authForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (
+    authMode === "register" &&
+    document.getElementById("authPassword").value !== confirmPasswordInput.value
+) {
+    const message = document.getElementById("authMessage");
+    message.textContent = "Passwords do not match.";
+    message.className = "alert alert-danger";
+    return;
+}
+
+    const endpoint = authMode === "register" ? "register" : "login";
+
+    try {
+        const response = await fetch(
+            `http://localhost:3000/api/auth/${endpoint}`,
+            {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: document.getElementById("authEmail").value.trim(),
+                    password: document.getElementById("authPassword").value
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Sign-in failed.");
+        }
+
+        authSection.classList.add("d-none");
+        appContent.classList.remove("d-none");
+        showSignedInUser(data.user.email);
+        await getExpenses();
+    } catch (error) {
+        const message = document.getElementById("authMessage");
+        message.textContent = error.message;
+        message.className = "alert alert-danger";
+    }
+});
+
+logoutButton.addEventListener("click", async () => {
+    try {
+        await fetch("http://localhost:3000/api/auth/logout", {
+            method: "POST",
+            credentials: "include"
+        });
+
+        showSignInForm();
+    } catch {
+        alert("Could not sign out. Please try again.");
+    }
+});
+
+async function checkAuthentication() {
+    try {
+        const response = await fetch("http://localhost:3000/api/auth/me", {
+            credentials: "include"
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        authSection.classList.add("d-none");
+        appContent.classList.remove("d-none");
+        showSignedInUser(data.user.email);
+        await getExpenses();
+    } catch (error) {
+        console.error("Could not check sign-in session:", error);
+    }
+}
+
+checkAuthentication();
+
